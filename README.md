@@ -196,10 +196,6 @@ The preprocessing pipeline transforms raw battery cycle data into a structured d
 
 **Performance**: Training completed successfully (results pending full evaluation)
 
-**Advantages**:
-- 10-100x faster than TensorFlow on Apple Silicon
-- Optimized for M3 Pro chip with MPS acceleration
-- Simple Monte Carlo Dropout implementation
 
 #### Transformer Model
 - Status: Pending implementation
