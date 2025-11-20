@@ -1,1 +1,1 @@
-{"input_size": 175, "hidden_size1": 64, "hidden_size2": 32, "dropout": 0.2, "sequence_length": 20}
+{"input_size": 175, "hidden_size1": 112, "hidden_size2": 32, "dropout": 0.1, "sequence_length": 20, "optimization_method": "optuna_bayesian", "best_params": {"hidden_size1": 112, "hidden_size2": 32, "dropout": 0.1, "learning_rate": 0.002308879217068737, "batch_size": 64}}
