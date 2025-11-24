@@ -109,11 +109,25 @@ def load_models():
         
         # Check if all required files exist
         if not model_info_path.exists():
-            raise FileNotFoundError(f"LSTM model info not found: {model_info_path}")
+            # List available files for debugging
+            available_files = list(models_dir.glob("*"))
+            raise FileNotFoundError(
+                f"LSTM model info not found: {model_info_path}\n"
+                f"Project root: {project_root}\n"
+                f"Models dir: {models_dir}\n"
+                f"Available files: {[f.name for f in available_files]}"
+            )
         if not model_path.exists():
             raise FileNotFoundError(f"LSTM model weights not found: {model_path}")
         if not scaler_path.exists():
-            raise FileNotFoundError(f"LSTM scaler not found: {scaler_path}")
+            # List available files for debugging
+            available_files = list(models_dir.glob("*.pkl"))
+            raise FileNotFoundError(
+                f"LSTM scaler not found: {scaler_path}\n"
+                f"Project root: {project_root}\n"
+                f"Models dir: {models_dir}\n"
+                f"Available .pkl files: {[f.name for f in available_files]}"
+            )
         
         with open(model_info_path, 'r') as f:
             lstm_info = json.load(f)
