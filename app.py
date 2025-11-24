@@ -705,25 +705,27 @@ elif model_choice == "LSTM (with Uncertainty)":
                         st.stop()
             
             # Prepare features (using full feature set)
-            seq_scaled = prepare_lstm_features(seq_cycles, models, feature_cols)
-            # Ensure correct shape: (1, sequence_length, n_features)
-            if seq_scaled.shape[0] == 1:
-                seq_scaled = seq_scaled[0:1]  # Keep batch dimension
-            else:
-                seq_scaled = seq_scaled.reshape(1, sequence_length, -1)
+            with st.spinner("Preparing features..."):
+                seq_scaled = prepare_lstm_features(seq_cycles, models, feature_cols)
+                # Ensure correct shape: (1, sequence_length, n_features)
+                if seq_scaled.shape[0] == 1:
+                    seq_scaled = seq_scaled[0:1]  # Keep batch dimension
+                else:
+                    seq_scaled = seq_scaled.reshape(1, sequence_length, -1)
             
             # Ensure model is in eval mode before point prediction (BatchNorm needs this for batch size 1)
             models['lstm'].eval()
 
             # Point prediction
-            with torch.no_grad():
-                X_tensor = torch.FloatTensor(seq_scaled).to(models['lstm_device'])
-                pred_lstm_raw_scaled = models['lstm'](X_tensor).cpu().numpy()
-                # Handle scalar vs array output
-                if pred_lstm_raw_scaled.ndim == 0:
-                    pred_lstm_raw_scaled = float(pred_lstm_raw_scaled)
-                else:
-                    pred_lstm_raw_scaled = pred_lstm_raw_scaled[0] if len(pred_lstm_raw_scaled) > 0 else float(pred_lstm_raw_scaled)
+            with st.spinner("Computing point prediction..."):
+                with torch.no_grad():
+                    X_tensor = torch.FloatTensor(seq_scaled).to(models['lstm_device'])
+                    pred_lstm_raw_scaled = models['lstm'](X_tensor).cpu().numpy()
+                    # Handle scalar vs array output
+                    if pred_lstm_raw_scaled.ndim == 0:
+                        pred_lstm_raw_scaled = float(pred_lstm_raw_scaled)
+                    else:
+                        pred_lstm_raw_scaled = pred_lstm_raw_scaled[0] if len(pred_lstm_raw_scaled) > 0 else float(pred_lstm_raw_scaled)
             
             # Optimized original LSTM doesn't use target normalization
             pred_lstm_raw = pred_lstm_raw_scaled
@@ -742,21 +744,53 @@ elif model_choice == "LSTM (with Uncertainty)":
             pred_lstm = clamp_rul_prediction(pred_lstm_raw, "LSTM", suppress_warnings=suppress_warnings)
             
             # MC Dropout for uncertainty
-            n_mc_samples = st.sidebar.slider("MC Dropout Samples", 10, 200, 100, 10)
+            n_mc_samples = st.sidebar.slider("MC Dropout Samples", 10, 200, 50, 10)
             
-            enable_dropout_during_inference(models['lstm'])  # Enable dropout without BatchNorm issues
-            mc_predictions_raw_scaled = []
-            with torch.no_grad():
-                for _ in range(n_mc_samples):
-                    pred = models['lstm'](X_tensor).cpu().numpy()
-                    # Handle scalar vs array output
-                    if pred.ndim == 0:
-                        pred_val = float(pred)
-                    else:
-                        pred_val = pred[0] if len(pred) > 0 else float(pred)
-                    mc_predictions_raw_scaled.append(pred_val)
+            # Show progress for MC Dropout
+            progress_bar = st.progress(0)
+            status_text = st.empty()
             
-            models['lstm'].eval()  # Restore eval mode
+            try:
+                enable_dropout_during_inference(models['lstm'])  # Enable dropout without BatchNorm issues
+                mc_predictions_raw_scaled = []
+                with torch.no_grad():
+                    for i in range(n_mc_samples):
+                        try:
+                            pred = models['lstm'](X_tensor).cpu().numpy()
+                            # Handle scalar vs array output
+                            if pred.ndim == 0:
+                                pred_val = float(pred)
+                            else:
+                                pred_val = pred[0] if len(pred) > 0 else float(pred)
+                            mc_predictions_raw_scaled.append(pred_val)
+                            
+                            # Update progress every 5 samples to reduce overhead
+                            if (i + 1) % 5 == 0 or (i + 1) == n_mc_samples:
+                                progress = (i + 1) / n_mc_samples
+                                progress_bar.progress(progress)
+                                status_text.text(f"Running MC Dropout: {i+1}/{n_mc_samples} samples...")
+                        except Exception as e:
+                            st.error(f"Error during MC Dropout sample {i+1}: {str(e)}")
+                            # Continue with remaining samples
+                            continue
+                
+                # Clear progress indicators
+                progress_bar.empty()
+                status_text.empty()
+                
+                models['lstm'].eval()  # Restore eval mode
+                
+                if len(mc_predictions_raw_scaled) == 0:
+                    st.error("MC Dropout failed - no predictions generated. Using point prediction only.")
+                    mc_predictions_raw_scaled = [pred_lstm_raw_scaled]
+                    
+            except Exception as e:
+                st.error(f"Error during MC Dropout: {str(e)}")
+                st.info("Falling back to point prediction only.")
+                mc_predictions_raw_scaled = [pred_lstm_raw_scaled]
+                progress_bar.empty()
+                status_text.empty()
+                models['lstm'].eval()  # Restore eval mode
             
             # Optimized original LSTM doesn't use target normalization
             mc_predictions_raw = mc_predictions_raw_scaled
