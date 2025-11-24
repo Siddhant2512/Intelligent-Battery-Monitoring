@@ -40,6 +40,11 @@ ENV/
 results/models/*.pkl
 results/models/*.joblib
 
+# Exception: Dashboard requires these model files
+!results/models/random_forest_rul_point_model.pkl
+!results/models/lstm_pytorch_scaler.pkl
+!results/models/transformer_scaler.pkl
+
 # OS
 .DS_Store
 Thumbs.db
