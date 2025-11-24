@@ -39,12 +39,12 @@ ENV/
 results/models/*.pkl
 results/models/*.joblib
 
-# Exception: Dashboard requires these specific model files
+# Exception: Dashboard requires these specific model files (MUST come after the exclusion)
 !results/models/random_forest_rul_point_model.pkl
 !results/models/lstm_pytorch_scaler.pkl
 !results/models/transformer_scaler.pkl
 
-# Exclude other .pkl files (but allow the exceptions above)
+# Exclude other .pkl files globally (but exceptions above still apply)
 *.pkl
 !results/models/random_forest_rul_point_model.pkl
 !results/models/lstm_pytorch_scaler.pkl
