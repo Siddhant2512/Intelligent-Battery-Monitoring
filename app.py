@@ -337,10 +337,31 @@ def load_models():
 def load_test_data():
     """Load test dataset for quick predictions."""
     processed_dir = project_root / "data" / "processed"
-    df = pd.read_parquet(processed_dir / "rul_features_with_emd.parquet")
-    df_clean = df[df['RUL'].notna()].copy()
-    test_df = df_clean[df_clean['split'] == 'test'].copy()
-    return test_df
+    parquet_file = processed_dir / "rul_features_with_emd.parquet"
+    
+    if not parquet_file.exists():
+        st.error(f"❌ Data file not found: {parquet_file}")
+        st.info("""
+        **Data file missing!** 
+        
+        The processed data file (`rul_features_with_emd.parquet`) is not available. 
+        This file is excluded from git due to size limitations.
+        
+        **To fix this:**
+        1. Run the data processing notebooks to generate the file
+        2. Or upload the file to your Streamlit Cloud deployment
+        3. Or use manual feature input mode (coming soon)
+        """)
+        return None
+    
+    try:
+        df = pd.read_parquet(parquet_file)
+        df_clean = df[df['RUL'].notna()].copy()
+        test_df = df_clean[df_clean['split'] == 'test'].copy()
+        return test_df
+    except Exception as e:
+        st.error(f"❌ Error loading data file: {str(e)}")
+        return None
 
 def clamp_rul_prediction(prediction, model_name="Model", show_warning=True, suppress_warnings=False):
     """
@@ -414,6 +435,10 @@ def clamp_rul_prediction(prediction, model_name="Model", show_warning=True, supp
 with st.spinner("Loading models..."):
     models = load_models()
     test_df = load_test_data()
+
+# Check if test data is available
+if test_df is None or test_df.empty:
+    st.stop()
 
 # Sidebar
 st.sidebar.header("⚙️ Configuration")

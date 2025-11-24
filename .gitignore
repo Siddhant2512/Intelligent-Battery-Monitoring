@@ -33,6 +33,9 @@ ENV/
 *.h5
 *.hdf5
 
+# Exception: Dashboard requires this file
+!data/processed/rul_features_with_emd.parquet
+
 # Model files
 results/models/*.pkl
 results/models/*.joblib
